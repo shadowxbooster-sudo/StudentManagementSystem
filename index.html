@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Student Result Management — Interactive</title>
+<style>
+  :root{--bg:#0f1724;--card:#0b1424;--muted:#9fbcd6;--accent:#61dafb;--panel:#142337}
+  body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#e6eef8; margin:0; padding:28px}
+  .wrap{max-width:980px;margin:0 auto}
+  header h1{font-size:2.2rem;color:var(--accent);margin:0 0 8px}
+  header p{color:var(--muted);margin:0 0 18px}
+  .grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+  .card{background:var(--card);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  label{display:block;margin:8px 0 6px;color:#cfe6ff;font-weight:600}
+  input[type="text"], input[type="number"], textarea, select {
+    width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);
+    background:var(--panel); color:#e6eef8; box-sizing:border-box;
+  }
+  button{background:var(--accent); color:#042; border:none; padding:9px 12px;border-radius:8px;font-weight:700; cursor:pointer}
+  .muted{color:var(--muted);font-size:0.95rem}
+  .list{margin-top:12px}
+  .student{padding:12px;border-radius:8px;background:#071229;margin-bottom:10px;border:1px solid rgba(255,255,255,0.02)}
+  .student h4{margin:0 0 6px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .btn-secondary{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#cfe6ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+  pre.output{background:#0c1a2c;padding:12px;border-radius:8px;overflow:auto;color:#cfe6ff}
+  footer{margin-top:22px;color:var(--muted);text-align:center}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} .card{padding:14px} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Student Result Management System</h1>
+      <p class="muted">Interactive web version — add students and marks, compute averages (built from your Java OOP logic).</p>
+    </header>
+
+    <div class="grid">
+      <!-- Left: main UI -->
+      <div class="card">
+        <h3>Add New Student</h3>
+        <label for="name">Name</label>
+        <input id="name" type="text" placeholder="Student name">
+
+        <label for="age">Age</label>
+        <input id="age" type="number" min="0" placeholder="e.g. 20">
+
+        <label for="roll">Roll No</label>
+        <input id="roll" type="number" min="0" placeholder="e.g. 101">
+
+        <label for="marks">Marks (comma separated OR add individually)</label>
+        <input id="marks" type="text" placeholder="e.g. 85, 90, 78">
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="addStudentBtn">Add Student</button>
+          <button id="clearFormBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div style="margin-top:14px">
+          <label for="quickMarks">Quick add mark to selected student</label>
+          <div style="display:flex;gap:8px">
+            <select id="studentSelect"></select>
+            <input id="quickMark" type="number" placeholder="mark">
+            <button id="addMarkBtn" class="btn-secondary">Add Mark</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="controls">
+            <button id="sortAvgBtn" class="btn-secondary">Sort by Average ↓</button>
+            <button id="sortNameBtn" class="btn-secondary">Sort by Name A→Z</button>
+            <button id="exportCSVBtn" class="btn-secondary">Export CSV</button>
+            <button id="clearAllBtn" class="btn-secondary">Clear All</button>
+          </div>
+        </div>
+
+        <h3 style="margin-top:16px">Students</h3>
+        <div id="studentsList" class="list"></div>
+      </div>
+
+      <!-- Right: sample output / explanation -->
+      <aside class="card">
+        <h3>Sample Output</h3>
+        <pre class="output" id="sampleOutput">
+Name: Asha
+Roll No: 101
+Marks: [85, 90, 80]
+Average: 85.00
+        </pre>
+
+        <h3 style="margin-top:12px">How it works</h3>
+        <p class="muted">This page models your Java classes (Person, Student) using JavaScript classes and Array arrays. Averages are computed same way as in Java.</p>
+
+        <div style="margin-top:12px">
+          <a id="runJavaLink" class="btn" href="#" target="_blank">▶ Run Java Code Online</a>
+        </div>
+
+      </aside>
+    </div>
+
+    <footer>
+      Built from your Java OOP project — student result management. Use the form to add students and marks.
+    </footer>
+  </div>
+
+<script>
+/* Simple JS OOP model mirroring the Java classes */
+class Person {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+}
+class Student extends Person {
+  constructor(name, age, rollNo) {
+    super(name, age);
+    this.rollNo = rollNo;
+    this.marks = [];
+  }
+  addMark(m) {
+    if (typeof m === 'number' && !Number.isNaN(m)) this.marks.push(m);
+  }
+  total() { return this.marks.reduce((a,b)=>a+b,0); }
+  average() { return this.marks.length === 0 ? 0 : this.total()/this.marks.length; }
+  formatted() {
+    return `Name: ${this.name}\nRoll No: ${this.rollNo}\nMarks: [${this.marks.join(', ')}]\nAverage: ${this.average().toFixed(2)}`;
+  }
+}
+
+/* App state */
+const students = [];
+
+/* DOM */
+const nameEl = document.getElementById('name');
+const ageEl = document.getElementById('age');
+const rollEl = document.getElementById('roll');
+const marksEl = document.getElementById('marks');
+const addStudentBtn = document.getElementById('addStudentBtn');
+const studentsList = document.getElementById('studentsList');
+const studentSelect = document.getElementById('studentSelect');
+const quickMark = document.getElementById('quickMark');
+const addMarkBtn = document.getElementById('addMarkBtn');
+const sortAvgBtn = document.getElementById('sortAvgBtn');
+const sortNameBtn = document.getElementById('sortNameBtn');
+const exportCSVBtn = document.getElementById('exportCSVBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const clearFormBtn = document.getElementById('clearFormBtn');
+const runJavaLink = document.getElementById('runJavaLink');
+
+runJavaLink.href = "https://paiza.io/en/languages/java"; // replace with your Paiza link if you want
+
+function refreshStudentSelect() {
+  studentSelect.innerHTML = '';
+  const opt = document.createElement('option'); opt.textContent = '-- choose student --'; opt.value = '';
+  studentSelect.appendChild(opt);
+  students.forEach((s,i)=>{
+    const o = document.createElement('option'); o.value = i; o.textContent = `${s.name} (Roll ${s.rollNo})`; studentSelect.appendChild(o);
+  });
+}
+
+function renderStudents() {
+  studentsList.innerHTML = '';
+  if (students.length === 0) {
+    studentsList.innerHTML = '<p class="muted">No students yet.</p>';
+    refreshStudentSelect();
+    return;
+  }
+  students.forEach((s, idx) => {
+    const div = document.createElement('div'); div.className = 'student';
+    const h = document.createElement('h4'); h.textContent = `${s.name} — Roll ${s.rollNo}`; div.appendChild(h);
+    const p1 = document.createElement('p'); p1.textContent = `Age: ${s.age}`; div.appendChild(p1);
+    const p2 = document.createElement('p'); p2.textContent = `Marks: [${s.marks.join(', ')}]`; div.appendChild(p2);
+    const p3 = document.createElement('p'); p3.textContent = `Average: ${s.average().toFixed(2)}`; div.appendChild(p3);
+
+    const removeBtn = document.createElement('button'); removeBtn.className='btn-secondary';
+    removeBtn.textContent = 'Remove'; removeBtn.onclick = ()=>{ students.splice(idx,1); renderStudents(); };
+    const addBtn = document.createElement('button'); addBtn.className='btn-secondary'; addBtn.textContent='Add mark'; addBtn.onclick = ()=>{
+      const value = prompt('Enter mark to add for ' + s.name);
+      const m = Number(value);
+      if (!isNaN(m)) { s.addMark(m); renderStudents(); } else alert('Invalid mark');
+    };
+    div.appendChild(removeBtn); div.appendChild(addBtn);
+
+    studentsList.appendChild(div);
+  });
+  refreshStudentSelect();
+}
+
+/* Add student from form */
+addStudentBtn.addEventListener('click', ()=>{
+  const name = nameEl.value.trim(); const age = Number(ageEl.value); const roll = Number(rollEl.value);
+  if (!name || !Number.isFinite(age) || !Number.isFinite(roll)) {
+    alert('Please enter valid name, age, and roll number.');
+    return;
+  }
+  const s = new Student(name, age, roll);
+  const raw = marksEl.value.trim();
+  if (raw) {
+    // parse comma separated
+    raw.split(',').map(x=>x.trim()).filter(x=>x!=='').forEach(val=>{
+      const m = Number(val);
+      if (!isNaN(m)) s.addMark(m);
+    });
+  }
+  students.push(s);
+  nameEl.value=''; ageEl.value=''; rollEl.value=''; marksEl.value='';
+  renderStudents();
+});
+
+/* quick add mark by select */
+addMarkBtn.addEventListener('click', ()=>{
+  const i = Number(studentSelect.value);
+  if (!Number.isInteger(i) || !students[i]) { alert('Select a student'); return; }
+  const m = Number(quickMark.value);
+  if (!Number.isFinite(m)) { alert('Enter a valid mark'); return; }
+  students[i].addMark(m);
+  quickMark.value='';
+  renderStudents();
+});
+
+/* sorting and utilities */
+sortAvgBtn.addEventListener('click', ()=>{
+  students.sort((a,b)=>b.average()-a.average()); renderStudents();
+});
+sortNameBtn.addEventListener('click', ()=>{ students.sort((a,b)=>a.name.localeCompare(b.name)); renderStudents(); });
+exportCSVBtn.addEventListener('click', ()=>{
+  if (students.length===0) { alert('No students to export'); return; }
+  const rows = [['Name','Age','Roll','Marks','Average']];
+  students.forEach(s=> rows.push([s.name,s.age,s.rollNo,`"${s.marks.join('|')}"`,s.average().toFixed(2)]));
+  const csv = rows.map(r=> r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'students.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+clearAllBtn.addEventListener('click', ()=>{ if(confirm('Clear all students?')) { students.length=0; renderStudents(); }});
+clearFormBtn.addEventListener('click', ()=>{ nameEl.value=''; ageEl.value=''; rollEl.value=''; marksEl.value=''; });
+
+/* initial render */
+renderStudents();
+</script>
+</body>
+</html>
